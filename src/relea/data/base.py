@@ -28,10 +28,12 @@ class DataModule:
             self.generator = None
 
     def __repr__(self):
-        return f"{self.__class__.__name__}\n" \
+        return (    # type: ignore
+            f"{self.__class__.__name__}\n" \
         f"   train length - {ceil(len(self.train_dataset) / self.batch_size)}\n" \
-        f"   val length - {ceil(len(self.val_dataset) / self.batch_size)}\n" \
+        f"   val length - {ceil(len(self.val_dataset) / self.batch_size)}\n" \ 
         f"   test length - {ceil(len(self.test_dataset) / self.batch_size)}\n"
+        )
 
     @abstractmethod
     def prepare_data(self):
@@ -44,7 +46,7 @@ class DataModule:
     @abstractmethod
     def train_dataloader(self):
         return DataLoader(
-            self.train_dataset,
+            self.train_dataset, # type: ignore
             batch_size=self.batch_size,
             shuffle=self.shuffle,
             num_workers=self.num_workers,
@@ -55,8 +57,8 @@ class DataModule:
 
     @abstractmethod
     def val_dataloader(self):
-        return DataLoader(
-            self.val_dataset,
+        return DataLoader( 
+            self.val_dataset, # type: ignore
             batch_size=self.batch_size,
             shuffle=False,
             num_workers=self.num_workers,
@@ -67,8 +69,8 @@ class DataModule:
 
     @abstractmethod
     def test_dataloader(self):
-        return DataLoader(
-            self.test_dataset,
+        return DataLoader( 
+            self.test_dataset, # type: ignore
             batch_size=self.batch_size,
             shuffle=False,
             num_workers=self.num_workers,
