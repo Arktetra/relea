@@ -29,9 +29,9 @@ class DataModule:
 
     def __repr__(self):
         return (    # type: ignore
-            f"{self.__class__.__name__}\n" \
-        f"   train length - {ceil(len(self.train_dataset) / self.batch_size)}\n" \
-        f"   val length - {ceil(len(self.val_dataset) / self.batch_size)}\n" \ 
+            f"{self.__class__.__name__}\n"
+        f"   train length - {ceil(len(self.train_dataset) / self.batch_size)}\n"
+        f"   val length - {ceil(len(self.val_dataset) / self.batch_size)}\n"
         f"   test length - {ceil(len(self.test_dataset) / self.batch_size)}\n"
         )
 
