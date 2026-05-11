@@ -1,4 +1,5 @@
 from relea.data.base import DataModule
+from relea.stem.imagenette import ImagenetteTrainStem, ImagenetteTestStem
 
 from pathlib import Path
 from torchvision import datasets
@@ -14,6 +15,8 @@ class ImagenetteDataModule(DataModule):
         num_workers: int = 1,
         on_gpu: bool = False,
         seed: Optional[int] = None,
+        use_stem: bool = True,
+        resize: int = 256
     ):
         super().__init__(
             batch_size,
@@ -25,12 +28,26 @@ class ImagenetteDataModule(DataModule):
 
         self.data_dir = Path(root) / "data" / "processed" / "Imagenette"
 
+        self.train_transform = None
+        self.test_transform = None
+        if use_stem:
+            self.train_transform = ImagenetteTrainStem(resize)
+            self.test_transform = ImagenetteTestStem(resize)
+
     def prepare_data(self):
         pass
 
     def setup(self):
-        self.train_dataset = datasets.Imagenette(self.data_dir, split="train", download=True)
-        self.train_dataset, self.val_dataset = random_split(
-            self.train_dataset, [0.9, 0.1]
+        self.train_dataset = datasets.Imagenette(
+            self.data_dir, 
+            split="train", 
+            download=True,
+            transform=self.train_transform
         )
-        self.test_dataset = datasets.Imagenette(self.data_dir, split="val", download=True)
+
+        self.test_dataset = datasets.Imagenette(
+            self.data_dir, 
+            split="val", 
+            download=True,
+            transform=self.test_transform
+        )
