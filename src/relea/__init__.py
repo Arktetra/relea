@@ -1,5 +1,6 @@
-from relea.trainer import Trainer 
+from relea.trainers import Trainer, VAETrainer
 
 __all__ = [
-    "Trainer"
+    "Trainer",
+    VAETrainer
 ]

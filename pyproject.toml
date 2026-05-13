@@ -7,6 +7,9 @@ dependencies = [
     "matplotlib",
     "torcheval>=0.0.7",
     "seaborn>=0.13.2",
+    "torchmetrics>=1.8.2",
+    "wandb>=0.26.1",
+    "tqdm>=4.67.3",
 ]
 
 [[tool.uv.index]]
