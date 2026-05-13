@@ -1,9 +1,9 @@
 from pathlib import Path
+from tqdm import tqdm
 from torch.utils.data import DataLoader
 from typing import Optional, Union, List
 
 import torch
-import torch.nn as nn
 
 from relea.callbacks import (
     Callback,
@@ -62,14 +62,14 @@ class Trainer:
     def train_epoch(self, train_dataloader, val_dataloader):
         self.training = True
         self.model.train()
-        for batch_idx, batch in enumerate(train_dataloader):
+        for batch_idx, batch in enumerate(tqdm(train_dataloader)):
             self.batch_idx, self.batch = batch_idx, batch
             self.run_batch(batch)
 
         self.training = False
         self.model.eval()
         with torch.no_grad():
-            for batch_idx, batch in enumerate(val_dataloader):
+            for batch_idx, batch in enumerate(tqdm(val_dataloader)):
                 self.batch_idx, self.batch = batch_idx, batch
                 self.run_batch(batch)
 
@@ -77,11 +77,12 @@ class Trainer:
     def train(
         self,
         model: BaseModule,
+        optimizer: torch.optim.Optimizer,
         train_dataloader: TRAIN_DATALOADER,
         val_dataloader: VAL_DATALOADER,
     ):
         self.model = model.to(self.accelerator)
-        self.optimizer = self.model.configure_optimizers()
+        self.optimizer = optimizer
 
         for epoch in range(self.max_epochs):
             self.epoch = epoch
