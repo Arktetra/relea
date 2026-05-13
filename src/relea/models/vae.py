@@ -1,5 +1,6 @@
 from typing import List
 
+import sys
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -75,7 +76,7 @@ class VDecoder(nn.Module):
             nn.Sequential(
                 nn.ConvTranspose2d(out_channels, out_channels, kernel_size=2, stride=2, padding=0),
                 nn.BatchNorm2d(out_channels),
-                nn.Tanh()
+                nn.Sigmoid()
             )
         )
 
@@ -102,6 +103,25 @@ class VAE(BaseModule):
         self.weight_reg = weight_reg
         self.device = device
 
+    @staticmethod
+    def from_config(cfg):
+        modules = sys.modules[__name__]
+        encoder = getattr(modules, cfg["models"]["args"]["encoder"]["name"])(
+            **cfg["models"]["args"]["encoder"]["args"]
+        )
+        decoder = getattr(modules, cfg["models"]["args"]["decoder"]["name"])(
+            **cfg["models"]["args"]["decoder"]["args"]
+        )
+
+        return VAE(
+            encoder,
+            decoder,
+            weight_recon = cfg["models"]["args"]["weight_recon"],
+            weight_reg = cfg["models"]["args"]["weight_reg"],
+            device=cfg["trainer"]["args"]["device"]
+        )
+
+
     def encode(self, x):
         z_loc, z_scale = self.encoder(x)
         return z_loc, z_scale
@@ -112,21 +132,28 @@ class VAE(BaseModule):
     def reparameterize(self, z_loc, z_scale):
         epsilon = torch.randn_like(z_loc)
         return z_scale * epsilon + z_loc
+    
+    def sample(self, n_samples):
+        z = torch.randn((n_samples, self.encoder.latent_dim)).to(self.device)
+        return self.decode(z)
 
     def run_step(self, batch):
-        X = batch
+        X, _ = batch
+        X = X.to(self.device)
 
         z_loc, z_scale = self.encode(X)
         z = self.reparameterize(z_loc, z_scale)
         X_pred = self.decode(z)
 
-        loss_recon = F.mse_loss(X, X_pred)
+        loss_recon = F.mse_loss(torch.sigmoid(X), X_pred)
         loss_reg = - 0.5 * torch.mean(
             torch.sum(
                 1 + torch.log(z_scale ** 2) - z_scale ** 2 - z_loc ** 2,
-                dim=z.shape[1:]
+                dim=list(range(1, z.ndim))
             ),
             dim=0
         )
 
-        return self.weight_recon * loss_recon + self.weight_reg * loss_reg
+        total_loss = self.weight_recon * loss_recon + self.weight_reg * loss_reg
+
+        return X_pred, total_loss, loss_recon, loss_reg
