@@ -2,6 +2,7 @@ from relea.callbacks import Callback
 from relea.utils.general_utils import to_cpu
 from copy import copy, deepcopy
 from torcheval.metrics import Mean
+from torcheval.metrics import FrechetInceptionDistance
 
 import relea
 import torch
@@ -64,3 +65,35 @@ class MetricsCallback(Callback):
                 m.update(to_cpu(trainer.preds))
             
             self.val_loss.update(to_cpu(trainer.loss))  # type: ignore
+
+class VAEMetricsCallback(MetricsCallback):
+    def __init__(self, *ms, **metrics):
+        super().__init__(*ms, **metrics)
+        self.all_metrics["train_fid_score"] = self.train_fid_score = FrechetInceptionDistance()
+        self.all_metrics["val_fid_score"] = self.val_fid_score = FrechetInceptionDistance()
+        self.all_metrics["train_loss_recon"] = self.train_loss_recon = Mean()
+        self.all_metrics["train_loss_reg"] = self.train_loss_reg = Mean()
+        self.all_metrics["val_loss_recon"] = self.val_loss_recon = Mean()
+        self.all_metrics["val_loss_reg"] = self.val_loss_reg = Mean()
+
+    def after_batch(self, trainer: "relea.VAETrainer"):
+        X, y = trainer.batch
+
+        if trainer.training:
+            for m in self.train_metrics.values():
+               m.update(to_cpu(trainer.preds), y)
+            
+            self.train_fid_score.update(to_cpu(trainer.preds), is_real=False)
+            self.train_fid_score.update(to_cpu(torch.sigmoid(X)), is_real=True)
+            self.train_loss.update(to_cpu(trainer.total_loss))  # type: ignore
+            self.train_loss_recon.update(to_cpu(trainer.loss_recon))
+            self.train_loss_reg.update(to_cpu(trainer.loss_reg))
+        else:
+            for m in self.val_metrics.values():
+                m.update(to_cpu(trainer.preds))
+            
+            self.val_fid_score.update(to_cpu(trainer.preds), is_real=False)
+            self.val_fid_score.update(to_cpu(torch.sigmoid(X)), is_real=True)
+            self.val_loss.update(to_cpu(trainer.total_loss))  # type: ignore
+            self.val_loss_recon.update(to_cpu(trainer.loss_recon))
+            self.val_loss_reg.update(to_cpu(trainer.loss_reg))
