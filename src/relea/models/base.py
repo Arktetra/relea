@@ -14,11 +14,6 @@ class BaseModule(nn.Module):
     @override
     def forward(self, *args: Any, **kwargs: Any) -> Any:
         return super().forward(*args, **kwargs)
-    
-    def to(self, device: str):
-        self.device = device
-        for param in self.parameters():
-            param.to(self.device)
 
     def run_step(self, batch):
         raise NotImplementedError("Implement me!")
