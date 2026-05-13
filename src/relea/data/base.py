@@ -11,7 +11,7 @@ class DataModule:
         self,
         batch_size: int = 1,
         shuffle: bool = True,
-        num_workers: int = 1,
+        num_workers: int = 0,
         on_gpu: bool = False,
         seed: Optional[int] = None,
     ):
