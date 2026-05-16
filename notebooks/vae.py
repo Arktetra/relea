@@ -4,6 +4,7 @@
 
 #%%
 from relea.data import ImagenetteDataModule
+from relea.data.mnist import MNISTDataModule
 from relea.models import VEncoder, VDecoder
 from relea.utils.general_utils import get_total_parameters
 
@@ -15,9 +16,9 @@ import torch
 import torch.nn as nn
 
 # %%
-datamodule = ImagenetteDataModule(
+datamodule = MNISTDataModule(
     "../", 
-    batch_size=128, 
+    batch_size=256, 
     shuffle=True, 
     num_workers=0, 
     on_gpu=False
@@ -77,4 +78,48 @@ nn.ModuleList()
 [1] + [1, 2]
 # %%
 2 * 2 * 512
+# %%
+from relea.models import VAE
+from tqdm import tqdm
+
+import yaml
+# %%
+with open("../configs/vae/mnist.yaml") as stream:
+    cfg = yaml.safe_load(stream)
+# %%
+vae = VAE.from_config(cfg).to("mps")
+# %%
+vae.load_checkpoint("../ckpts/VAE.pt")
+# %%
+batch = next(iter(train_dataloader))
+#%%
+vae.sample(1)
+#%%
+imgs, labels = batch
+vae.encoder(torch.randn((256, 3, 256)))
+#%%
+ncols = 5
+fig, axs = plt.subplots(1, ncols)
+preds, _, _, _ = vae.run_step(batch)
+print(preds.shape)
+
+for ax, img in zip(axs, preds[:ncols]):
+    ax.imshow(img.cpu().detach().permute(1, 2, 0))
+    ax.set_xticks([])
+    ax.set_yticks([])
+# %%
+img = vae.sample(1)
+# %%
+plt.imshow(
+    torch.sigmoid(
+        img.squeeze().detach().cpu().permute(1, 2, 0)
+    )
+)
+# %%
+optim = torch.optim.Adam(vae.parameters(), lr=1e-4)
+for batch in tqdm((train_dataloader)):
+    X_pred, total_loss, loss_recon, loss_reg  = vae.run_step(batch)
+    total_loss.backward()
+    optim.step()
+    optim.zero_grad()
 # %%

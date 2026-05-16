@@ -34,15 +34,15 @@ class VEncoder(nn.Module):
 
         self.conv_blocks = nn.Sequential(*modules)
         self.gap = nn.AdaptiveAvgPool2d((1, 1))
-        self.fc_loc = nn.Linear(hidden_channels[-1], self.latent_dim)
-        self.fc_scale = nn.Linear(hidden_channels[-1], self.latent_dim)
+        self.fc_mu = nn.Linear(hidden_channels[-1], self.latent_dim)
+        self.fc_logvar = nn.Linear(hidden_channels[-1], self.latent_dim)
 
     def forward(self, x):
         z = self.conv_blocks(x)
         z = self.gap(z).squeeze()
-        z_loc = self.fc_loc(z)
-        z_scale = self.fc_scale(z)
-        return z_loc, z_scale
+        z_mu = self.fc_mu(z)
+        z_logvar = self.fc_logvar(z)
+        return z_mu, z_logvar
 
 class VDecoder(nn.Module):
     def __init__(
@@ -56,8 +56,8 @@ class VDecoder(nn.Module):
         if hidden_channels is None:
             hidden_channels = [128, 64, 32, 16, 8]
 
-        if len(hidden_channels) < 7:
-            hidden_channels = hidden_channels + (7 - len(hidden_channels)) * [out_channels]
+        # if len(hidden_channels) < 7:
+        #     hidden_channels = hidden_channels + (7 - len(hidden_channels)) * [out_channels]
 
         self.hidden_channels = hidden_channels
 
@@ -74,9 +74,8 @@ class VDecoder(nn.Module):
 
         modules.append(
             nn.Sequential(
-                nn.ConvTranspose2d(out_channels, out_channels, kernel_size=2, stride=2, padding=0),
-                nn.BatchNorm2d(out_channels),
-                nn.Sigmoid()
+                nn.ConvTranspose2d(self.hidden_channels[-1], out_channels, kernel_size=2, stride=2, padding=0),
+                # nn.BatchNorm2d(out_channels),
             )
         )
 
@@ -123,15 +122,16 @@ class VAE(BaseModule):
 
 
     def encode(self, x):
-        z_loc, z_scale = self.encoder(x)
-        return z_loc, z_scale
+        z_mu, z_logvar = self.encoder(x)
+        return z_mu, z_logvar
     
     def decode(self, z):
         return self.decoder(z)
 
-    def reparameterize(self, z_loc, z_scale):
-        epsilon = torch.randn_like(z_loc)
-        return z_scale * epsilon + z_loc
+    def reparameterize(self, z_mu, z_logvar):
+        z_std = torch.exp(0.5 * z_logvar)
+        epsilon = torch.randn_like(z_mu)
+        return z_std * epsilon + z_mu
     
     def sample(self, n_samples):
         z = torch.randn((n_samples, self.encoder.latent_dim)).to(self.device)
@@ -141,17 +141,16 @@ class VAE(BaseModule):
         X, _ = batch
         X = X.to(self.device)
 
-        z_loc, z_scale = self.encode(X)
-        z = self.reparameterize(z_loc, z_scale)
+        z_mu, z_logvar = self.encode(X)
+        z = self.reparameterize(z_mu, z_logvar)
         X_pred = self.decode(z)
 
-        loss_recon = F.mse_loss(torch.sigmoid(X), X_pred)
+        loss_recon = F.binary_cross_entropy(torch.sigmoid(X_pred), X)
         loss_reg = - 0.5 * torch.mean(
             torch.sum(
-                1 + torch.log(z_scale ** 2) - z_scale ** 2 - z_loc ** 2,
+                1 + z_logvar - torch.exp(z_logvar) - z_mu ** 2,
                 dim=list(range(1, z.ndim))
-            ),
-            dim=0
+            )
         )
 
         total_loss = self.weight_recon * loss_recon + self.weight_reg * loss_reg

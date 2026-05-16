@@ -64,10 +64,7 @@ class VAETrainer(Trainer):
     ):
         self.model = model.to(self.accelerator)
         self.optimizer = optimizer
-
-        if self.sample_epoch:
-            fig, axs = plt.subplots(1, self.sample_epoch)
-
+        
         print(f"Total number of parameters: {get_total_parameters(self.model)}")
         print(f"Total number of trainable parameters: {get_trainable_parameters(self.model)}")
         print(f"Starting Training on {self.model.device}")
@@ -77,6 +74,7 @@ class VAETrainer(Trainer):
             self.train_epoch(train_dataloader, val_dataloader)
 
             if self.sample_epoch and savepath and  (self.epoch + 1) % self.sample_epoch == 0:
+                fig, axs = plt.subplots(1, self.sample_epoch)
                 imgs = self.model.sample(n_samples=self.sample_epoch)
                 imgs = imgs.detach().cpu()
                 
@@ -85,7 +83,7 @@ class VAETrainer(Trainer):
                     ax.set_xticks([])
                     ax.set_yticks([])
 
-                fig.savefig(f"{savepath}/epoch-{epoch}.png")
+                fig.savefig(f"{savepath}/epoch-{epoch + 1}.png")
 
     def callback(self, method_name: str):
         run_callbacks(self.callbacks, method_name, self)
