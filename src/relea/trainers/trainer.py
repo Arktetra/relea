@@ -36,8 +36,8 @@ class Trainer:
 
         self.callbacks = callbacks
 
-        if not has_instance(callbacks, RecorderCallback):
-            self.callbacks.append(RecorderCallback())
+        # if not has_instance(callbacks, RecorderCallback):
+        #     self.callbacks.append(RecorderCallback())
 
         if not has_instance(callbacks, ModelCheckpoint) and enable_checkpointing:
             checkpoint_dir = checkpoint_dir if checkpoint_dir else "./ckpts"
