@@ -31,13 +31,13 @@ def main(cfg):
     logger = wandb.init(project=project_name, config=config, tags=tags)
 
     callbacks = [
-        getattr(metrics_module, f"{cfg['models']['name']}MetricsCallback")(),
+        getattr(metrics_module, f"{cfg['models']['name']}MetricsCallback")(device=cfg["trainer"]["args"]["device"]),
         ModelCheckpoint(
-            dir_path=cfg["trainer"]["args"]["checkpoint_dir"], 
+            dir_path=Path(cfg["trainer"]["args"]["checkpoint_dir"]) / cfg["project"], 
             track=cfg["trainer"]["args"]["track"]
         ),
         ModelCheckpoint(
-            dir_path=cfg["trainer"]["args"]["checkpoint_dir"],
+            dir_path=Path(cfg["trainer"]["args"]["checkpoint_dir"]) / cfg["project"],
             track=cfg["trainer"]["args"]["track"],
             every_epoch=True,
         ),
