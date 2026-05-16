@@ -1,4 +1,5 @@
-from relea.data.base import DataModule
+from relea.data.base import DataModule, BaseDataset
+from relea.stem.mnist import MNISTGenStem
 
 from pathlib import Path
 from torchvision import datasets
@@ -13,6 +14,7 @@ class MNISTDataModule(DataModule):
         shuffle: bool = True,
         num_workers: int = 1,
         on_gpu: bool = False,
+        use_stem: bool = True,
         seed: Optional[int] = None,
     ):
         super().__init__(
@@ -25,12 +27,18 @@ class MNISTDataModule(DataModule):
 
         self.data_dir = Path(root) / "data" / "processed" / "MNIST"
 
+        if use_stem:
+            self.train_transform = MNISTGenStem()
+            self.test_transform = MNISTGenStem()
+
     def prepare_data(self):
         pass
 
     def setup(self):
-        self.train_dataset = datasets.MNIST(self.data_dir, train=True, download=True)
-        self.train_dataset, self.val_dataset = random_split(
-            self.train_dataset, [0.9, 0.1]
+        train_dataset = datasets.MNIST(self.data_dir, train=True, download=True)
+        train_dataset, val_dataset = random_split(
+            train_dataset, [0.9, 0.1]
         )
-        self.test_dataset = datasets.MNIST(self.data_dir, train=False, download=True)
+        self.train_dataset = BaseDataset(train_dataset, transform=self.train_transform)
+        self.val_dataset = BaseDataset(val_dataset, transform=self.test_transform)
+        self.test_dataset = datasets.MNIST(self.data_dir, train=False, download=True, transform=self.test_transform)
