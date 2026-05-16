@@ -1,3 +1,6 @@
 **/*.egg-info
 **/*.lock
+**/*__pycache__
 /data
+/wandb
+/benchmarks
