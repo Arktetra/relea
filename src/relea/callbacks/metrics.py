@@ -1,8 +1,10 @@
-from relea.callbacks import Callback
 from relea.utils.general_utils import to_cpu
+from relea.callbacks import Callback
 from copy import copy, deepcopy
 from torcheval.metrics import Mean
 from torcheval.metrics import FrechetInceptionDistance
+from torchmetrics.image.lpip import LearnedPerceptualImagePatchSimilarity
+from torchmetrics.image.psnr import PeakSignalNoiseRatio
 
 import relea
 import torch
@@ -68,9 +70,14 @@ class MetricsCallback(Callback):
 
 class VAEMetricsCallback(MetricsCallback):
     def __init__(self, *ms, **metrics):
+        device = metrics.pop("device")
         super().__init__(*ms, **metrics)
-        self.all_metrics["train_fid_score"] = self.train_fid_score = FrechetInceptionDistance()
-        self.all_metrics["val_fid_score"] = self.val_fid_score = FrechetInceptionDistance()
+        # self.all_metrics["train_fid_score"] = self.train_fid_score = FrechetInceptionDistance(device=device)
+        # self.all_metrics["val_fid_score"] = self.val_fid_score = FrechetInceptionDistance(device=device)
+        # self.all_metrics["train_lpips_score"] = self.train_lpips_score = LearnedPerceptualImagePatchSimilarity()
+        # self.all_metrics["val_lpips_score"] = self.val_lpips_score = LearnedPerceptualImagePatchSimilarity()
+        self.all_metrics["train_psnr"] = self.train_psnr = PeakSignalNoiseRatio((0, 1))
+        self.all_metrics["val_psnr"] = self.val_psnr = PeakSignalNoiseRatio((0, 1))
         self.all_metrics["train_loss_recon"] = self.train_loss_recon = Mean()
         self.all_metrics["train_loss_reg"] = self.train_loss_reg = Mean()
         self.all_metrics["val_loss_recon"] = self.val_loss_recon = Mean()
@@ -83,8 +90,10 @@ class VAEMetricsCallback(MetricsCallback):
             for m in self.train_metrics.values():
                m.update(to_cpu(trainer.preds), y)
             
-            self.train_fid_score.update(to_cpu(trainer.preds), is_real=False)
-            self.train_fid_score.update(to_cpu(torch.sigmoid(X)), is_real=True)
+            # self.train_fid_score.update(to_cpu(trainer.preds), is_real=False)
+            # self.train_fid_score.update(to_cpu(torch.sigmoid(X)), is_real=True)
+            # self.train_lpips_score.update(to_cpu(torch.tanh(trainer.preds)), to_cpu(torch.tanh(X)))
+            self.train_psnr.update(to_cpu(torch.sigmoid(trainer.preds)), to_cpu(X))
             self.train_loss.update(to_cpu(trainer.total_loss))  # type: ignore
             self.train_loss_recon.update(to_cpu(trainer.loss_recon))
             self.train_loss_reg.update(to_cpu(trainer.loss_reg))
@@ -92,8 +101,10 @@ class VAEMetricsCallback(MetricsCallback):
             for m in self.val_metrics.values():
                 m.update(to_cpu(trainer.preds))
             
-            self.val_fid_score.update(to_cpu(trainer.preds), is_real=False)
-            self.val_fid_score.update(to_cpu(torch.sigmoid(X)), is_real=True)
+            # self.val_fid_score.update(to_cpu(trainer.preds), is_real=False)
+            # self.val_fid_score.update(to_cpu(torch.sigmoid(X)), is_real=True)
+            # self.val_lpips_score.update(to_cpu(torch.sigmoid(trainer)), to_cpu(torch.tanh(X)))
+            self.val_psnr.update(to_cpu(torch.sigmoid(trainer.preds)), to_cpu(X))
             self.val_loss.update(to_cpu(trainer.total_loss))  # type: ignore
             self.val_loss_recon.update(to_cpu(trainer.loss_recon))
             self.val_loss_reg.update(to_cpu(trainer.loss_reg))
