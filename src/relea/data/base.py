@@ -1,9 +1,31 @@
 from abc import abstractmethod
 from math import ceil
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, Dataset
 from typing import Optional
 
 import torch
+
+class BaseDataset(Dataset):
+    def __init__(
+        self, dataset: Dataset, transform=None, target_transform=None
+    ):
+        super().__init__()
+        self.dataset = dataset
+        self.transform = transform
+        self.target_transform = target_transform
+
+    def __len__(self):
+        return len(self.dataset)
+    
+    def __getitem__(self, idx):
+        datum, target = self.dataset[idx]
+        
+        if self.transform:
+            datum = self.transform(datum)
+        if self.target_transform:
+            target = self.target_transform(datum)
+
+        return datum, target
 
 
 class DataModule:
@@ -12,6 +34,8 @@ class DataModule:
         batch_size: int = 1,
         shuffle: bool = True,
         num_workers: int = 0,
+        persistent_workers: bool = False,
+        prefetch_factor: Optional[int] = None,
         on_gpu: bool = False,
         seed: Optional[int] = None,
     ):
@@ -20,6 +44,8 @@ class DataModule:
         self.num_workers = num_workers
         self.on_gpu = on_gpu
         self.collate_fn = None
+        self.persistent_workers = persistent_workers
+        self.prefetch_factor = prefetch_factor
 
         if seed is not None:
             self.generator = torch.Generator()
@@ -50,6 +76,8 @@ class DataModule:
             batch_size=self.batch_size,
             shuffle=self.shuffle,
             num_workers=self.num_workers,
+            persistent_workers=self.persistent_workers,
+            prefetch_factor=self.prefetch_factor,
             pin_memory=self.on_gpu,
             collate_fn=self.collate_fn,
             generator=self.generator,
@@ -62,6 +90,8 @@ class DataModule:
             batch_size=self.batch_size,
             shuffle=False,
             num_workers=self.num_workers,
+            persistent_workers=self.persistent_workers,
+            prefetch_factor=self.prefetch_factor,
             pin_memory=self.on_gpu,
             collate_fn=self.collate_fn,
             generator=self.generator,
@@ -74,6 +104,8 @@ class DataModule:
             batch_size=self.batch_size,
             shuffle=False,
             num_workers=self.num_workers,
+            persistent_workers=self.persistent_workers,
+            prefetch_factor=self.prefetch_factor,
             pin_memory=self.on_gpu,
             collate_fn=self.collate_fn,
             generator=self.generator,
