@@ -29,3 +29,5 @@ Example:
 ```bash
 python train.py --config /configs/vae/vae.yaml
 ```
+
+Then, the samples generated at certain epochs during the training can be viewed in `work_dirs` directory in the project root directory.
