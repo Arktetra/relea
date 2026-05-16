@@ -1,4 +1,4 @@
-from relea.data.base import DataModule
+from relea.data.base import BaseDataset, DataModule
 from relea.stem.imagenette import ImagenetteTrainStem, ImagenetteTestStem
 
 from pathlib import Path
@@ -13,6 +13,8 @@ class ImagenetteDataModule(DataModule):
         batch_size: int = 1,
         shuffle: bool = True,
         num_workers: int = 0,
+        persistent_workers: bool = False,
+        prefetch_factor: Optional[int] = None,
         on_gpu: bool = False,
         seed: Optional[int] = None,
         use_stem: bool = True,
@@ -22,6 +24,8 @@ class ImagenetteDataModule(DataModule):
             batch_size,
             shuffle,
             num_workers,
+            persistent_workers,
+            prefetch_factor,
             on_gpu,
             seed
         )
@@ -38,12 +42,19 @@ class ImagenetteDataModule(DataModule):
         pass
 
     def setup(self):
-        self.train_dataset = datasets.Imagenette(
+        train_dataset = datasets.Imagenette(
             self.data_dir, 
             split="train", 
             download=True,
             transform=self.train_transform
         )
+
+        train_dataset, val_dataset = random_split(
+            train_dataset, [0.9, 0.1]
+        )
+        
+        self.train_dataset = BaseDataset(train_dataset, transform=self.train_transform)
+        self.val_dataset = BaseDataset(val_dataset, transform=self.test_transform)
 
         self.test_dataset = datasets.Imagenette(
             self.data_dir, 
