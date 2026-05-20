@@ -56,6 +56,10 @@ class CausalSelfAttention(nn.Module):
             self.W_k, x
         ) + self.b_k[None, None, :, :]
 
+        cos, sin = self.rotary(q.size(1), q.device, q.dtype)
+        q = apply_rotary_emb(q, cos, sin)
+        k = apply_rotary_emb(q, cos, sin)
+
         v = torch.einsum(
             "n_head d_model d_head, batch seq d_model -> batch seq n_head d_head",
             self.W_v, x
@@ -116,6 +120,28 @@ class Transformer(nn.Module):
         self.tie_embeddings = tie_embeddings
 
         self.token_embedding = nn.Embedding(vocab_size, dim_model)
+        self.blocks = nn.ModuleList([
+            TransformerBlock(dim_model, dim_mlp, num_heads)
+            for _ in range(num_layers)
+        ])
+
+        if not tie_embeddings:
+            self.unembed = nn.Linear(dim_model, vocab_size)
 
     def forward(self, x):
-        pass
+        h = self.token_embedding[x]
+
+        for block in self.blocks:
+            h = block(h)
+        h = F.layer_norm(h, h.size())
+
+        if self.tie_embeddings:
+            h = torch.einsum(
+                "batch seq dim_model, vocab_size dim_model -> batch seq vocab_size",
+                h, self.token_embedding
+            )
+        else:
+            h = self.unembed(h)
+
+        return F.softmax(h, dim=-1)
+
