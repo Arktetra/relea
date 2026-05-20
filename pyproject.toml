@@ -10,6 +10,9 @@ dependencies = [
     "torchmetrics>=1.8.2",
     "wandb>=0.26.1",
     "tqdm>=4.67.3",
+    "torch-geometric",
+    "transformers>=5.8.1",
+    "datasets>=4.8.5",
 ]
 
 [[tool.uv.index]]
