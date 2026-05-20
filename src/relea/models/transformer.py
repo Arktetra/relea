@@ -2,8 +2,36 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch
 
+class Rotary(nn.Module):
+    def __init__(self, dim, base=10000):
+        super().__init__()
+        inv_freqs = 1. / (base ** torch.arange(0, dim, 2, dtype=torch.float32) / dim)
+        self.register_buffer("inv_freqs", inv_freqs, persistent=False)
+        self._seq_len_cached = 0
+        self._cos_cached: torch.Tensor | None = None
+        self._sin_cached: torch.Tensor | None = None
+    
+    def forward(self, seq_len: int, device: torch.device, dtype: torch.dtype):
+        if (
+            self._seq_len_cached != seq_len
+            or self._cos_cached is None
+            or self._sin_cached is None
+            or self._cos_cached.device != device
+        ):
+            t = torch.arange(seq_len, device=device, dtype=self.in_freqs.dtype)
+            freqs = torch.outer(t, self.inv_freqs)
+            self._cos_cached = freqs[None, None, :, :].cos()
+            self._sin_cached = freqs[None, None, :, :].sin()
+            self._seq_len_cached = seq_len
+        return self._cos_cached.to(dtype=dtype), self._sin_cached.to(dtype=dtype)
+    
+def apply_rotary_emb(x, cos, sin):
+    half = x.size(-1) // 2
+    x1, x2 = x[:, :half], x[:, half:]
+    return torch.cat((x1 * cos + x2 * sin), (x1 * (-sin) + x2 * cos), dim=-1)
+
 class CausalSelfAttention(nn.Module):
-    def __init__(self, dim_model, num_heads):
+    def __init__(self, dim_model: int, num_heads: int, rotary_base: int):
         super().__init__()
         self.dim_head = dim_model // num_heads
         self.W_q = nn.Parameter(torch.empty((num_heads, dim_model, self.dim_head)))
@@ -14,6 +42,8 @@ class CausalSelfAttention(nn.Module):
         self.b_k = nn.Parameter(torch.zeros((num_heads, self.dim_head)))
         self.b_v = nn.Parameter(torch.zeros((num_heads, self.dim_head)))
         self.b_o = nn.Parameter(torch.zeros((dim_model,)))
+        
+        self.rotary = Rotary(self.dim_head, rotary_base)
 
     def forward(self, x):
         q = torch.einsum(
