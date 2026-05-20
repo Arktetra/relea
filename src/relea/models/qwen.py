@@ -2,7 +2,10 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+from relea.configs.qwen import QwenConfig
 from relea.models.transformer import Rotary, apply_rotary_emb
+
+from typing import Optional
 
 class Qwen3RMSNorm(nn.Module):
     def __init__(self, dim_model: int, eps: float = 1e-6):
@@ -23,9 +26,10 @@ class Qwen3MLP(nn.Module):
         dim_model: int,
         dim_mlp: int,
     ):
-        self.up_proj = nn.Linear(dim_model, dim_mlp)
-        self.gate_proj = nn.Linear(dim_model, dim_mlp)
-        self.down_proj = nn.Linear(dim_mlp, dim_model)
+        super().__init__()
+        self.up_proj = nn.Linear(dim_model, dim_mlp, bias=False)
+        self.gate_proj = nn.Linear(dim_model, dim_mlp, bias=False)
+        self.down_proj = nn.Linear(dim_mlp, dim_model, bias=False)
         
     def forward(self, x):
         return self.down_proj(F.silu(self.gate_proj(x)) * self.up_proj(x))
@@ -38,11 +42,12 @@ class Qwen3Attention(nn.Module):
         num_kv_heads: int,
         dropout: float,
         rope_base: int,
-        rms_norm_eps: 1e-6,
+        dim_head: Optional[int] = None,
+        rms_norm_eps: float = 1e-6,
     ):
         super().__init__()
         self.dim_model = dim_model
-        self.dim_head = dim_model // num_heads
+        self.dim_head = dim_head if dim_head is not None else dim_model // num_heads
         self.num_heads = num_heads
         self.rope_base = rope_base
         self.num_kv_groups = num_heads // num_kv_heads
@@ -52,10 +57,10 @@ class Qwen3Attention(nn.Module):
         self.W_k = nn.Parameter(torch.empty((num_kv_heads, dim_model, self.dim_head)))
         self.W_v = nn.Parameter(torch.empty((num_kv_heads, dim_model, self.dim_head)))
         self.W_o = nn.Parameter(torch.empty((num_heads, self.dim_head, dim_model)))
-        self.b_q = nn.Parameter(torch.zeros((num_heads, self.dim_head)))
-        self.b_k = nn.Parameter(torch.zeros((num_heads, self.dim_head)))
-        self.b_v = nn.Parameter(torch.zeros((num_heads, self.dim_head)))
-        self.b_o = nn.Parameter(torch.zeros((dim_model,)))
+        # self.b_q = nn.Parameter(torch.zeros((num_heads, self.dim_head)))
+        # self.b_k = nn.Parameter(torch.zeros((num_heads, self.dim_head)))
+        # self.b_v = nn.Parameter(torch.zeros((num_heads, self.dim_head)))
+        # self.b_o = nn.Parameter(torch.zeros((dim_model,)))
 
         self.q_norm = Qwen3RMSNorm(self.dim_head, eps=rms_norm_eps)
         self.k_norm = Qwen3RMSNorm(self.dim_head, eps=rms_norm_eps)
@@ -118,7 +123,8 @@ class Qwen3TransformerBlock(nn.Module):
         num_kv_heads: int,
         rope_base: int,
         dropout: float,
-        rms_norm_eps: 1e-6
+        dim_head: Optional[int] = None,
+        rms_norm_eps: float = 1e-6
     ):
         super().__init__()
         self.norm1 = Qwen3RMSNorm(dim_model)
@@ -128,6 +134,7 @@ class Qwen3TransformerBlock(nn.Module):
             num_kv_heads, 
             dropout, 
             rope_base, 
+            dim_head,
             rms_norm_eps
         )
         self.norm2 = Qwen3RMSNorm(dim_model)
@@ -151,6 +158,7 @@ class Qwen3Model(nn.Module):
         num_layers: int,
         rope_base: int,
         dropout: float,
+        dim_head: Optional[int] = None,
         rms_norm_eps: float = 1e-6,
         tie_embeddings: bool = True
     ):
@@ -164,12 +172,13 @@ class Qwen3Model(nn.Module):
                 num_kv_heads,
                 rope_base,
                 dropout,
+                dim_head,
                 rms_norm_eps
             ) for _ in range(num_layers)
         ])
         self.norm = Qwen3RMSNorm(dim_model)
 
-        self.lm_head = nn.Linear(dim_model, vocab_size) if tie_embeddings else None
+        self.lm_head = nn.Linear(dim_model, vocab_size) if not tie_embeddings else None
 
     def forward(self, x):
         h = self.token_embedding[x]
@@ -184,3 +193,18 @@ class Qwen3Model(nn.Module):
         
         return h
         
+    @staticmethod
+    def from_config(config: QwenConfig):
+        return Qwen3Model(
+            config.vocab_size,
+            config.dim_model,
+            config.dim_mlp,
+            config.num_heads,
+            config.num_kv_heads,
+            config.num_layers,
+            config.rope_base,
+            config.dropout,
+            config.dim_head,
+            config.rms_norm_eps,
+            config.tie_embeddings
+        )
