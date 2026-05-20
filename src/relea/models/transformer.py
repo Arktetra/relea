@@ -18,7 +18,7 @@ class Rotary(nn.Module):
             or self._sin_cached is None
             or self._cos_cached.device != device
         ):
-            t = torch.arange(seq_len, device=device, dtype=self.in_freqs.dtype)
+            t = torch.arange(seq_len, device=device, dtype=self.inv_freqs.dtype)
             freqs = torch.outer(t, self.inv_freqs)
             self._cos_cached = freqs[None, None, :, :].cos()
             self._sin_cached = freqs[None, None, :, :].sin()
