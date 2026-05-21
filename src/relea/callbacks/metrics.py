@@ -55,16 +55,16 @@ class MetricsCallback(Callback):
         self._log(log)
 
     def after_batch(self, trainer: "relea.Trainer"):
-        y = to_cpu(trainer.batch)
+        y = to_cpu(trainer.batch[-1])
 
         if trainer.training:
             for m in self.train_metrics.values():
-               m.update(to_cpu(trainer.preds), y)
+                m.update(to_cpu(trainer.preds), y)
             
             self.train_loss.update(to_cpu(trainer.loss))  # type: ignore
         else:
             for m in self.val_metrics.values():
-                m.update(to_cpu(trainer.preds))
+                m.update(to_cpu(trainer.preds), y)
             
             self.val_loss.update(to_cpu(trainer.loss))  # type: ignore
 
