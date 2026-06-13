@@ -61,6 +61,7 @@ class ModelCheckpoint(Callback):
         self._checkpoint(f"epoch-{trainer.epoch}", trainer)
 
     def before_train(self, trainer: "relea.Trainer"):
-        self.higher_is_better = trainer.metrics.all_metrics[self.track].higher_is_better
-        if not self.higher_is_better:
-            self.best_metric = float("inf")
+        if hasattr(trainer.metrics.all_metrics[self.track], "higher_is_better"):
+            self.higher_is_better = trainer.metrics.all_metrics[self.track].higher_is_better
+            if not self.higher_is_better:
+                self.best_metric = float("inf")
