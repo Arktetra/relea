@@ -8,8 +8,6 @@ import torch
 
 from relea.callbacks import (
     Callback,
-    EpochalCallback,
-    IterativeCallback,
     with_callbacks,
     run_callbacks,
 )
@@ -22,7 +20,7 @@ VAL_DATALOADER = DataLoader
 
 class Trainer(ABC):
     @with_callbacks("batch")
-    def run_batch(self, batch):
+    def _run_batch(self, batch):
         if self.training:
             logits, loss = self.model.run_step(batch)
             loss.backward()
@@ -38,11 +36,18 @@ class Trainer(ABC):
 
     @abstractmethod
     @with_callbacks("train")
-    def train(
+    def _train(
         self, 
-        model: BaseModule, 
-        optimizer: torch.optim.Optimizer,
         train_dataloader: TRAIN_DATALOADER
+    ):
+        pass
+
+    @abstractmethod
+    def train(
+        self,
+        model: BaseModule,
+        optimizer: torch.optim.Optimizer,
+        train_dataloader: TRAIN_DATALOADER,
     ):
         pass
 
@@ -61,7 +66,7 @@ class IterativeTrainer(Trainer):
         num_train_steps: int = 1000000,
         num_val_steps: Optional[int] = None,
         eval_every: int = 10000,
-        callbacks: List[IterativeCallback] = [],
+        callbacks: List[Callback] = [],
         enable_checkpointing: bool = True,
         checkpoint_dir: Optional[Union[Path, str]] = None,
         clip_grad: Optional[bool] = False
@@ -80,14 +85,38 @@ class IterativeTrainer(Trainer):
             self.callbacks.append(ModelCheckpoint(dir_path=checkpoint_dir))
 
     @with_callbacks("eval")
-    def run_eval(self):
+    def _train_until_eval(self, train_dataloader, val_dataloader):
+        self.training = True
+        self.model.train()
+        for _ in range(self.eval_every):
+            self.batch = next(iter(train_dataloader))
+            self._run_batch(self.batch)
+            self.step += 1
+            self.pbar.update(1)
+            if self.step % self.num_train_steps == 0:
+                break
+        
+        self.training = False
         self.model.eval()
         with torch.inference_mode():
             for _ in range(self.num_val_steps):
-                self.batch = next(iter(self.val_dataloader))
-                self.run_batch(self.batch)
-            
+                self.batch = next(iter(val_dataloader))
+                self._run_batch(self.batch)
+
     @with_callbacks("train")
+    def _train(
+        self,
+        train_dataloader: TRAIN_DATALOADER,
+        val_dataloader: VAL_DATALOADER = None,
+    ):
+        self.step = 0
+        self.pbar = tqdm(total=self.num_train_steps)
+        while True:
+            self._train_until_eval(train_dataloader, val_dataloader)
+            if self.step + 1 >= self.num_train_steps:
+                break
+        self.pbar.close()
+
     def train(
         self,
         model: BaseModule,
@@ -97,22 +126,12 @@ class IterativeTrainer(Trainer):
     ):
         self.model = model
         self.optimizer = optimizer
-        self.train_dataloader = cycle(train_dataloader)
+        train_dataloader = cycle(train_dataloader)
         if val_dataloader:
-            self.val_dataloader = cycle(val_dataloader)
-
+            val_dataloader = cycle(val_dataloader)
 
         self.preamble()
-        for i in tqdm(range(self.num_train_steps)):
-            self.step = i
-            self.batch = next(iter(train_dataloader))
-
-            self.training = True
-            self.run_batch(self.batch)
-
-            if (self.step + 1) % self.eval_every == 0 and val_dataloader and self.num_val_steps:
-                self.training = False
-                self.run_eval()
+        self._train(train_dataloader, val_dataloader)
 
 class EpochalTrainer(Trainer):
     def __init__(
@@ -136,21 +155,30 @@ class EpochalTrainer(Trainer):
             self.callbacks.append(ModelCheckpoint(dir_path=checkpoint_dir))
 
     @with_callbacks("epoch")
-    def train_epoch(self, train_dataloader, val_dataloader):
+    def _train_epoch(self, train_dataloader, val_dataloader):
         self.training = True
         self.model.train()
         for batch_idx, batch in enumerate(tqdm(train_dataloader)):
             self.batch_idx, self.batch = batch_idx, batch
-            self.run_batch(batch)
+            self._run_batch(batch)
         
         self.training = False
         self.model.eval()
         with torch.no_grad():
             for batch_idx, batch in enumerate(tqdm(val_dataloader)):
                 self.batch_idx, self.batch = batch_idx, batch
-                self.run_batch(batch)
+                self._run_batch(batch)
     
     @with_callbacks("train")
+    def _train(
+        self,
+        train_dataloader: TRAIN_DATALOADER,
+        val_dataloader: VAL_DATALOADER,
+    ):
+        for epoch in range(self.max_epochs):
+            self.epoch = epoch
+            self._train_epoch(train_dataloader, val_dataloader)
+
     def train(
         self,
         model: BaseModule,
@@ -162,7 +190,4 @@ class EpochalTrainer(Trainer):
         self.optimizer = optimizer 
 
         self.preamble()
-
-        for epoch in range(self.max_epochs):
-            self.epoch = epoch
-            self.train_epoch(train_dataloader, val_dataloader)
+        self._train(train_dataloader, val_dataloader)
