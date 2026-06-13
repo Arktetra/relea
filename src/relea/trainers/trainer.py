@@ -124,7 +124,7 @@ class IterativeTrainer(Trainer):
         train_dataloader: TRAIN_DATALOADER,
         val_dataloader: VAL_DATALOADER = None,
     ):
-        self.model = model
+        self.model = model.to(self.accelerator)
         self.optimizer = optimizer
         train_dataloader = cycle(train_dataloader)
         if val_dataloader:
