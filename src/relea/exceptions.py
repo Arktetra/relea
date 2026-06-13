@@ -6,3 +6,6 @@ class CancelEpochException(Exception):
 
 class CancelBatchException(Exception):
     pass
+
+class CancelEvalException(Exception):
+    pass
