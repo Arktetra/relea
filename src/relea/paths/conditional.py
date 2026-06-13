@@ -1,4 +1,6 @@
-class GaussianCondOTProbabilityPath:
+from relea.paths.base import ProbabilityPath
+
+class GaussianCondOTProbabilityPath(ProbabilityPath):
     def __init__(self):
         pass
 
