@@ -1,6 +1,7 @@
-from relea.trainers import Trainer, VAETrainer
+from relea.trainers import Trainer, IterativeTrainer, VAETrainer
 
 __all__ = [
     "Trainer",
-    VAETrainer
+    "IterativeTrainer",
+    "VAETrainer"
 ]
