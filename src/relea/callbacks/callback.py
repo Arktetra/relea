@@ -1,15 +1,16 @@
+from abc import ABC
 from operator import attrgetter
-from typing import Sequence
+from typing import Sequence, Union
 
 import relea
 from relea.exceptions import (
     CancelBatchException,
     CancelEpochException,
     CancelTrainException,
+    CancelEvalException,
 )
 
-
-class Callback:
+class Callback(ABC):
     """
     Abstract base class for building new callbacks.
     """
@@ -22,16 +23,60 @@ class Callback:
     def after_batch(self, trainer: "relea.Trainer"):
         pass
 
-    def before_epoch(self, trainer: "relea.Trainer"):
-        pass
-
-    def after_epoch(self, trainer: "relea.Trainer"):
-        pass
-
     def before_train(self, trainer: "relea.Trainer"):
         pass
 
     def after_train(self, trainer: "relea.Trainer"):
+        pass 
+
+class IterativeCallback(Callback):
+    """
+    Abstract base class for building new iterative callbacks.
+    """
+
+    order = 0
+
+    def before_batch(self, trainer: "relea.IterativeTrainer"):
+        pass
+
+    def after_batch(self, trainer: "relea.IterativeTrainer"):
+        pass
+
+    def before_eval(self, trainer: "relea.IterativeTrainer"):
+        pass
+
+    def after_eval(self, trainer: "relea.IterativeTrainer"):
+        pass
+
+    def before_train(self, trainer: "relea.IterativeTrainer"):
+        pass
+
+    def after_train(self, trainer: "relea.IterativeTrainer"):
+        pass
+
+class EpochalCallback(Callback, ABC):
+    """
+    Abstract base class for building new iterative callbacks.
+    """
+
+    order = 0
+
+    def before_batch(self, trainer: "relea.EpochalTrainer"):
+        pass
+
+    def after_batch(self, trainer: "relea.EpochalTrainer"):
+        pass
+
+    def before_epoch(self, trainer: "relea.EpochalTrainer"):
+        pass
+
+    def after_epoch(self, trainer: "relea.EpochalTrainer"):
+        pass
+
+    def before_train(self, trainer: "relea.EpochalTrainer"):
+        pass
+
+    def after_train(self, trainer: "relea.EpochalTrainer"):
         pass
 
 
@@ -52,7 +97,7 @@ class with_callbacks:
 
 
 def run_callbacks(
-    callbacks: Sequence[Callback], name: str, learner: "relea.Trainer"
+    callbacks: Sequence[Union[Callback]], name: str, learner: "relea.Trainer"
 ) -> None:
     for callback in sorted(callbacks, key=attrgetter("order")):
         method = getattr(callback, name, None)
