@@ -1,7 +1,5 @@
 from relea.callbacks.callback import (
     Callback, 
-    EpochalCallback,
-    IterativeCallback,
     with_callbacks, 
     run_callbacks
 )
@@ -14,8 +12,6 @@ __all__ = [
     "with_callbacks",
     "run_callbacks",
     "Callback",
-    "EpochalCallback",
-    "IterativeCallback",
     "ModelCheckpoint",
     "RecorderCallback",
     "VAEMetricsCallback",
