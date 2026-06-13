@@ -1,5 +1,5 @@
 from relea.utils.general_utils import to_cpu
-from relea.callbacks import Callback
+from relea.callbacks import Callback, IterativeCallback
 from copy import copy, deepcopy
 from torcheval.metrics import Mean
 from torcheval.metrics import FrechetInceptionDistance
@@ -68,6 +68,62 @@ class MetricsCallback(Callback):
             
             self.val_loss.update(to_cpu(trainer.loss))  # type: ignore
 
+class IterativeMetricsCallback(IterativeCallback):
+    def __init__(self, verbose=False, *ms, **metrics):
+        self.verbose = verbose
+
+        for o in ms:
+            metrics[type(o).__name__] = o
+        
+        self.metrics = metrics
+
+        self.train_metrics = {}
+        for k, v in self.metrics.items():
+            self.train_metrics[f"train_{k}"] = v
+        self.all_metrics = copy(self.train_metrics)
+        self.all_metrics["train_loss"] = self.train_loss = Mean()
+
+        self.val_metrics = {}
+        for k, v in self.metrics.items():
+            self.val_metrics[f"val_{k}"] = v
+        self.all_metrics.update(copy(self.val_metrics))
+        self.all_metrics["val_loss"] = self.val_loss = Mean()
+
+    def _log(self, log_dict):
+        for k, v in log_dict.items():
+            if k == "step":
+                print(f"{k} - {v}")
+            else:
+                print(f"    {k} - {v}")
+
+    def before_train(self, trainer: "relea.IterativeTrainer"):
+        trainer.metrics = self
+
+    def after_eval(self, trainer: "relea.IterativeTrainer"):
+        log = {}
+        log["step"] = trainer.step + 1
+        for k, v in self.all_metrics.items():
+            log.update({k: f"{v.compute()}"})
+        
+        if self.verbose:
+            self._log(log)
+            
+        [o.reset() for o in self.all_metrics.values()]
+
+    def after_batch(self, trainer: "relea.IterativeTrainer"):
+        y = to_cpu(trainer.batch[-1])
+
+        if trainer.training:
+            for m in self.train_metrics.values():
+                m.update(to_cpu(trainer.preds), y)
+
+            self.train_loss.update(to_cpu(trainer.loss))
+        else:
+            for m in self.val_metrics.values():
+                m.update(to_cpu(trainer.preds), y)
+
+            self.val_loss.update(to_cpu(trainer.loss))
+
 class VAEMetricsCallback(MetricsCallback):
     def __init__(self, *ms, **metrics):
         device = metrics.pop("device")
@@ -108,3 +164,25 @@ class VAEMetricsCallback(MetricsCallback):
             self.val_loss.update(to_cpu(trainer.total_loss))  # type: ignore
             self.val_loss_recon.update(to_cpu(trainer.loss_recon))
             self.val_loss_reg.update(to_cpu(trainer.loss_reg))
+
+
+
+class CFMMetricsCallback(MetricsCallback):
+    def __init__(self, *ms, **metrics):
+        device = metrics.pop("device")
+        super().__init__(*ms, **metrics)
+        self.all_metrics["train_fid"] = self.train_fid = FrechetInceptionDistance(device=device)
+        self.all_metrics["val_fid"] = self.val_fid = FrechetInceptionDistance(device=device)
+
+    def after_batch(self, trainer: "relea.FlowMatchingTrainer"):
+        X, y = trainer.batch
+        self.train_loss.update(trainer.loss)
+
+        if (trainer.step + 1) % trainer.eval_every != 0:
+            return
+        
+        samples = trainer.sampler.sample(n=len(X), steps=12)
+
+        self.train_fid.update(X, is_real=True)
+        self.train_fid.update(samples, is_real=False)
+        self.train_fid.compute()
