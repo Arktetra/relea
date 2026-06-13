@@ -7,6 +7,7 @@ from relea.callbacks import Callback
 
 
 class ModelCheckpoint(Callback):
+    order = 2
     def __init__(self, dir_path: Union[Path, str], track: str = "val_loss", every_eval: bool = False, persist: bool = False):
         super().__init__()
         self.track = track
