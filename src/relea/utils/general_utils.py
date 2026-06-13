@@ -1,4 +1,5 @@
 from collections.abc import Mapping
+from torch.utils.data import DataLoader
 from typing import Any, Sequence
 
 import numpy as np
@@ -50,3 +51,8 @@ def apply_global_seed(seed: int):
     if torch.mps.is_available():
         torch.mps.manual_seed(seed)
         
+
+def cycle(dataloader: DataLoader):
+    while True:
+        for data in dataloader:
+            yield data
