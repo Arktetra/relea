@@ -5,6 +5,7 @@ dependencies = [
     "torch",
     "torchvision",
     "matplotlib",
+    "safetensors",
     "torcheval>=0.0.7",
     "seaborn>=0.13.2",
     "torchmetrics>=1.8.2",
