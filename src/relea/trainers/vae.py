@@ -1,15 +1,12 @@
 from pathlib import Path
 from typing import List, Optional, Union
 
-from relea.models.base import BaseModule
-from relea.trainers.trainer import Trainer, TRAIN_DATALOADER, VAL_DATALOADER
-from relea.callbacks import Callback, with_callbacks, run_callbacks
-from relea.utils.general_utils import get_total_parameters, get_trainable_parameters
+from relea.trainers.generative import GenerativeTrainer
+from relea.callbacks import Callback, with_callbacks
 
-import matplotlib.pyplot as plt
 import torch
 
-class VAETrainer(Trainer):
+class VAETrainer(GenerativeTrainer):
     def __init__(
         self,
         accelerator: str = "cpu",
@@ -52,39 +49,3 @@ class VAETrainer(Trainer):
             "loss_recon": loss_recon,
             "loss_reg": loss_reg
         }
-
-    @with_callbacks("train")
-    def train(
-        self,
-        model: BaseModule,
-        optimizer: torch.optim.Optimizer,
-        train_dataloader: TRAIN_DATALOADER,
-        val_dataloader: VAL_DATALOADER,
-        savepath: Optional[str] = None
-    ):
-        self.model = model.to(self.accelerator)
-        self.optimizer = optimizer
-        
-        print(f"Total number of parameters: {get_total_parameters(self.model)}")
-        print(f"Total number of trainable parameters: {get_trainable_parameters(self.model)}")
-        print(f"Starting Training on {self.model.device}")
-
-        for epoch in range(self.max_epochs):
-            self.epoch = epoch
-            self.train_epoch(train_dataloader, val_dataloader)
-
-            if self.sample_epoch and savepath and  (self.epoch + 1) % self.sample_epoch == 0:
-                fig, axs = plt.subplots(1, self.sample_epoch)
-                imgs = self.model.sample(n_samples=self.sample_epoch)
-                imgs = imgs.detach().cpu()
-                
-                for (ax, img) in zip(axs, imgs):
-                    ax.imshow(img.permute(1, 2, 0))
-                    ax.set_xticks([])
-                    ax.set_yticks([])
-
-                fig.savefig(f"{savepath}/epoch-{epoch + 1}.png")
-
-    def callback(self, method_name: str):
-        run_callbacks(self.callbacks, method_name, self)
-

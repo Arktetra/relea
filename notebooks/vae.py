@@ -96,7 +96,7 @@ batch = next(iter(train_dataloader))
 vae.sample(1)
 #%%
 imgs, labels = batch
-vae.encoder(torch.randn((256, 3, 256)))
+preds, _, _, _ = vae.run_step(batch)
 #%%
 ncols = 5
 fig, axs = plt.subplots(1, ncols)
