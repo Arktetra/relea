@@ -10,8 +10,8 @@ class FlowEulerSampler(Sampler):
         with torch.no_grad():
             h = 1 / steps
             xs = [x.clone()]
-            for _ in range(steps):
-                xs.append(self.model(x))
+            for i in range(steps):
+                xs.append(self.model(x, torch.full((x.size(0), 1), i * h)))
                 x += xs[-1] * h
             
         return x, xs
