@@ -15,7 +15,7 @@ class MiniImageNetTrainStem(ImageStem):
             v2.ToImage(),
             v2.ToDtype(torch.float32, scale=True),
             v2.Normalize(
-                mean=[0.485, 0.465, 0.406],
+                mean=[0.485, 0.456, 0.406],
                 std=[0.229, 0.224, 0.225]
             )
         ])
@@ -30,7 +30,7 @@ class MiniImageNetTestStem(ImageStem):
             v2.ToImage(),
             v2.ToDtype(torch.float32, scale=True),
             v2.Normalize(
-                mean=[0.485, 0.465, 0.406],
+                mean=[0.485, 0.456, 0.406],
                 std=[0.229, 0.224, 0.225]
             )
         ])
