@@ -5,7 +5,7 @@ from torchvision.transforms import v2
 import torch
 
 class MiniImageNetTrainStem(ImageStem):
-    def __init__(self, resize: int = 32):
+    def __init__(self, resize: int = 256):
         super().__init__()
         self.resize = resize
         self.transforms = v2.Compose([
@@ -21,11 +21,11 @@ class MiniImageNetTrainStem(ImageStem):
         ])
 
 class MiniImageNetTestStem(MiniImageNetTrainStem):
-    def __init__(self, resize: int = 32):
+    def __init__(self, resize: int = 256):
         super().__init__(resize)
 
 class MiniImageNetGenStem(ImageStem):
-    def __init__(self, resize: int = 32):
+    def __init__(self, resize: int = 256):
         super().__init__()
         self.resize = resize
         self.transforms = v2.Compose([
