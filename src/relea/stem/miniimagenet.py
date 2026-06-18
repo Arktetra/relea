@@ -20,10 +20,20 @@ class MiniImageNetTrainStem(ImageStem):
             )
         ])
 
-class MiniImageNetTestStem(MiniImageNetTrainStem):
+class MiniImageNetTestStem(ImageStem):
     def __init__(self, resize: int = 256):
-        super().__init__(resize)
-
+        super().__init__()
+        self.resize = resize
+        self.transforms = v2.Compose([
+            v2.Resize((self.resize, self.resize)),
+            v2.CenterCrop((224, 224)),
+            v2.ToImage(),
+            v2.ToDtype(torch.float32, scale=True),
+            v2.Normalize(
+                mean=[0.485, 0.465, 0.405],
+                std=[0.229, 0.224, 0.225]
+            )
+        ])
 class MiniImageNetGenStem(ImageStem):
     def __init__(self, resize: int = 256):
         super().__init__()
