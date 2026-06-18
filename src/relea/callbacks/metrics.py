@@ -45,7 +45,7 @@ class MetricsCallback(Callback):
 
     def after_eval(self, trainer: "relea.IterativeTrainer"):
         log = {}
-        log["step"] = trainer.step
+        log["step"] = trainer.step + 1
         for k, v in self.all_metrics.items():
             log.update({k: f"{v.compute()}"})
         
