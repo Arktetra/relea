@@ -1,0 +1,35 @@
+project: "UCF-Subset"
+tags: "test-run"
+seed: 41
+
+models:
+  name: "MViTVideoClassifier"
+  args:
+    num_classes: 10
+
+data:
+  name: "UCFDataModule"
+  args:
+    root: "./"
+    batch_size: 32
+    num_workers: 0
+    on_gpu: False
+
+trainer:
+  name: "EpochalTrainer"
+  args:
+    max_epochs: 100
+    optimizer:
+      name: "AdamW"
+      args:
+        lr: 0.0003
+        weight_decay: 0.001
+    metrics_callback:
+      name: "ClassificationMetricsCallback"
+      args:
+        num_classes: 10
+        verbose: False
+    device: "cpu"
+    checkpoint_dir: "./ckpts"
+    track: ["val_acc", "val_f1-score"]
+    clip_grad: False
