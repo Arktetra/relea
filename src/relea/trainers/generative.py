@@ -5,7 +5,7 @@ from typing import List, Optional, Union
 from relea.models.base import BaseModule
 from relea.samplers import Sampler
 from relea.trainers.trainer import Trainer, TRAIN_DATALOADER
-from relea.callbacks import Callback, with_callbacks, ModelCheckpoint
+from relea.callbacks import Callback, with_callbacks, ModelCheckpoint, MetricsCallback
 from relea.utils.general_utils import has_instance, cycle
 
 import matplotlib.pyplot as plt
@@ -33,6 +33,9 @@ class GenerativeTrainer(Trainer):
         self.callbacks = callbacks
         self.enable_checkpointing = enable_checkpointing
         self.clip_grad = clip_grad
+
+        if not has_instance(callbacks, MetricsCallback):
+            self.callbacks.append(MetricsCallback(val=False))
 
         if not has_instance(callbacks, ModelCheckpoint) and enable_checkpointing:
             checkpoint_dir = checkpoint_dir if checkpoint_dir else "./ckpts"
@@ -74,10 +77,10 @@ class GenerativeTrainer(Trainer):
         self.model = model.to(self.accelerator)
         self.sampler = sampler
         self.optimizer = optimizer
-        train_dataloader = cycle(train_dataloader)
+        self.dataloader = cycle(train_dataloader)
 
         self.preamble()
-        self._train(train_dataloader)
+        self._train(self.dataloader)
 
         
 
