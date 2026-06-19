@@ -5,13 +5,14 @@ from relea.callbacks.callback import (
 )
 from relea.callbacks.checkpoint import ModelCheckpoint
 from relea.callbacks.recorder import RecorderCallback
-from relea.callbacks.metrics import VAEMetricsCallback
+from relea.callbacks.metrics import VAEMetricsCallback, MetricsCallback
 from relea.callbacks.logging import LoggingCallback
 
 __all__ = [
     "with_callbacks",
     "run_callbacks",
     "Callback",
+    "MetricsCallback",
     "ModelCheckpoint",
     "RecorderCallback",
     "VAEMetricsCallback",
