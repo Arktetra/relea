@@ -1,7 +1,7 @@
 from relea import models
 from relea import data
 from relea import trainers
-from relea.callbacks import metrics as metrics_module
+from relea.custom import metrics as metrics_module
 from relea.callbacks import (
     ModelCheckpoint,
     LoggingCallback
@@ -31,20 +31,24 @@ def main(cfg):
     logger = wandb.init(project=project_name, config=config, tags=tags)
 
     callbacks = [
-        getattr(metrics_module, f"{cfg['models']['name']}MetricsCallback")(device=cfg["trainer"]["args"]["device"]),
-        ModelCheckpoint(
-            dir_path=Path(cfg["trainer"]["args"]["checkpoint_dir"]) / cfg["project"], 
-            track=cfg["trainer"]["args"]["track"]
+        getattr(metrics_module, f"{cfg['trainer']['args']['metrics_callback']['name']}").from_config(
+            cfg["trainer"]["args"]["metrics_callback"]["args"]
         ),
         ModelCheckpoint(
-            dir_path=Path(cfg["trainer"]["args"]["checkpoint_dir"]) / cfg["project"],
-            track=cfg["trainer"]["args"]["track"],
-            every_epoch=True,
+            dir_path=Path(cfg["trainer"]["args"]["checkpoint_dir"]) / cfg["project"], 
+            track="val_loss"
         ),
         LoggingCallback(logger)
     ]
+    callbacks.extend([
+        ModelCheckpoint(
+            dir_path=Path(cfg["trainer"]["args"]["checkpoint_dir"]) / cfg["project"],
+            track=t
+        )
+        for t in cfg["trainer"]["args"]["track"]
+    ])
 
-    model = getattr(models, cfg["models"]["name"]).from_config(cfg)
+    model = getattr(models, cfg["models"]["name"]).from_config(cfg["models"]["args"])
     optimizer = getattr(torch.optim, cfg["trainer"]["args"]["optimizer"]["name"])(
         model.parameters(),
         **cfg["trainer"]["args"]["optimizer"]["args"],
@@ -56,7 +60,7 @@ def main(cfg):
         enable_checkpointing=True,
         checkpoint_dir=cfg["trainer"]["args"]["checkpoint_dir"],
         clip_grad=cfg["trainer"]["args"]["clip_grad"],
-        sample_epoch=cfg["trainer"]["args"]["sample_epoch"]
+        # sample_epoch=cfg["trainer"]["args"]["sample_epoch"]
     )
 
     train_dataloader, test_dataloader = (
@@ -72,7 +76,7 @@ def main(cfg):
         optimizer,
         train_dataloader,
         test_dataloader,
-        savepath=savepath
+        # savepath=savepath
     )
 
 if __name__ == "__main__":
