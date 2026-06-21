@@ -44,7 +44,7 @@ class MiniImageNetDataModule(DataModule):
             seed
         )
 
-        self.data_dir = Path(root) / "data" / "processed" / "MiniImageNet"
+        self.data_dir = Path(root) / "data" / "processed" / "miniimagenet"
 
         self.train_transform = None
         self.test_transform = None
@@ -54,17 +54,17 @@ class MiniImageNetDataModule(DataModule):
             self.test_transform = MiniImageNetTestStem(resize)
 
     def prepare_data(self):
-        pass
-
-    def setup(self):
+        
         ds = "timm/mini-imagenet"
+                
+        self.train_dataset = HFMiniImageNet(load_dataset(ds, split="train[:80%]", cache_dir=self.data_dir))
+        # train_dataset, val_dataset = random_split(
+        #     train_dataset, [0.8, 0.2], generator=self.generator
+        # )
+        self.val_dataset = HFMiniImageNet(load_dataset(ds, split="train[80%:]", cache_dir=self.data_dir))
+        self.test_dataset = HFMiniImageNet(load_dataset(ds, split="test", cache_dir=self.data_dir))
         
-        train_dataset = HFMiniImageNet(load_dataset(ds, split="train"))
-        train_dataset, val_dataset = random_split(
-            train_dataset, [0.8, 0.2], generator=self.generator
-        )
-        test_dataset = HFMiniImageNet(load_dataset(ds, split="test"))
-        
-        self.train_dataset = BaseDataset(train_dataset, transform=self.train_transform)
-        self.val_dataset = BaseDataset(val_dataset, transform=self.test_transform)
-        self.test_dataset = BaseDataset(test_dataset, transform=self.test_transform)
+    def setup(self):
+        self.train_dataset = BaseDataset(self.train_dataset, transform=self.train_transform)
+        self.val_dataset = BaseDataset(self.val_dataset, transform=self.test_transform)
+        self.test_dataset = BaseDataset(self.test_dataset, transform=self.test_transform)

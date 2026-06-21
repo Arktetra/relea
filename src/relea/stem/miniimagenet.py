@@ -9,8 +9,7 @@ class MiniImageNetTrainStem(ImageStem):
         super().__init__()
         self.resize = resize
         self.transforms = v2.Compose([
-            v2.Resize((self.resize, self.resize)),
-            v2.RandomResizedCrop(size=(224, 224), antialias=True),
+            v2.RandomResizedCrop(size=(self.resize, self.resize), antialias=True),
             v2.RandomHorizontalFlip(p=0.5),
             v2.ToImage(),
             v2.ToDtype(torch.float32, scale=True),
@@ -26,7 +25,6 @@ class MiniImageNetTestStem(ImageStem):
         self.resize = resize
         self.transforms = v2.Compose([
             v2.Resize((self.resize, self.resize)),
-            v2.CenterCrop((224, 224)),
             v2.ToImage(),
             v2.ToDtype(torch.float32, scale=True),
             v2.Normalize(
