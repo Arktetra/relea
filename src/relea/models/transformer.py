@@ -5,7 +5,7 @@ import torch
 class Rotary(nn.Module):
     def __init__(self, dim, base=10000):
         super().__init__()
-        inv_freqs = 1. / (base ** torch.arange(0, dim, 2, dtype=torch.float32) / dim)
+        inv_freqs = 1. / (base ** (torch.arange(0, dim, 2, dtype=torch.float32) / dim))
         self.register_buffer("inv_freqs", inv_freqs, persistent=False)
         self._seq_len_cached = 0
         self._cos_cached: torch.Tensor | None = None
