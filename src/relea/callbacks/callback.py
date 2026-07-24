@@ -22,13 +22,7 @@ class Callback(ABC):
 
     def after_batch(self, trainer: "relea.Trainer"):
         pass
-
-    def before_eval(self, trainer: "relea.Trainer"):
-        pass
-
-    def after_eval(self, trainer: "relea.Trainer"):
-        pass
-
+    
     def before_train(self, trainer: "relea.Trainer"):
         pass
 
