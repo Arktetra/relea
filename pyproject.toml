@@ -12,10 +12,11 @@ dependencies = [
     "wandb>=0.26.1",
     "tqdm>=4.67.3",
     "torch-geometric",
-    "transformers>=5.8.1",
     "datasets>=4.8.5",
     "pims>=0.7",
     "torchcodec>=0.14.0",
+    "transformers>=5.12.1",
+    "pytest>=9.1.1",
 ]
 
 [[tool.uv.index]]
