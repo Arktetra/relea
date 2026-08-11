@@ -23,7 +23,7 @@ class BaseDataset(Dataset):
         if self.transform:
             datum = self.transform(datum)
         if self.target_transform:
-            target = self.target_transform(datum)
+            target = self.target_transform(target)
 
         return datum, target
 

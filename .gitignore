@@ -7,3 +7,5 @@
 /benchmarks
 /ckpts
 /notebooks
+/venv
+test.py
